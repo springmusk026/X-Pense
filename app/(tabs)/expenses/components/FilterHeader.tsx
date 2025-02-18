@@ -16,7 +16,7 @@ interface FilterHeaderProps {
   activeFilterCount: number;
 }
 
-export function FilterHeader({
+export default function FilterHeader({
   search,
   onSearchChange,
   onFilterPress,

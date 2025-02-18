@@ -9,7 +9,23 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#232323",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200
+        }
+      ],
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#232323",
+          "image": "./assets/images/icon.png",
+          "imageWidth": 200
+        }
+      ],
       [
         "expo-image-picker",
         {
@@ -23,33 +39,6 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to save scanned receipts.",
           "savePhotosPermission": "Allow $(PRODUCT_NAME) to save scanned receipts to your photos.",
           "isAccessMediaLocationEnabled": false
-        }
-      ],
-      [
-        "expo-splash-screen",
-        {
-          "autoHide": true,
-          "splash": {
-            "image": "./assets/images/icon.png",
-            "resizeMode": "contain",
-            "backgroundColor": "#ffffff"
-          }
-        }
-      ],
-      [
-        "expo-sqlite",
-        {
-          "enableFTS": true,
-          "useSQLCipher": true,
-          "android": {
-            "enableFTS": false,
-            "useSQLCipher": false
-          },
-          "ios": {
-            "customBuildFlags": [
-              "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
-            ]
-          }
         }
       ]
     ],
@@ -69,19 +58,15 @@
         "android.permission.MEDIA_LIBRARY",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.expensetracker.app"
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "single",
-      "favicon": "./assets/images/favicon.png"
+      "package": "com.expense.tracker.app.np"
     },
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
       "router": {
-        "origin": false
+        "origin": false,
+        "root": "./app"
       },
       "eas": {
         "projectId": "53d8bbdc-7c08-47d8-87d0-94bb3925b2a0"

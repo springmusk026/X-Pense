@@ -1,4 +1,4 @@
-package com.expensetracker.app
+package com.expense.tracker.app.np
 
 import android.app.Application
 import android.content.res.Configuration

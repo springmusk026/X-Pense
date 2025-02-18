@@ -29,7 +29,7 @@ const CHART_WIDTH = width - 40;
 type TimeRange = 'week' | 'month' | 'year';
 type ChartType = 'spending' | 'category';
 
-export default function ReportsScreen() {
+export default function Page() {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [chartType, setChartType] = useState<ChartType>('spending');
   const [isExporting, setIsExporting] = useState(false);

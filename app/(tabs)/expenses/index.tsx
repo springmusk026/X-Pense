@@ -6,9 +6,9 @@ import { Link } from 'expo-router';
 import { isWithinInterval, startOfDay, endOfDay, subDays } from 'date-fns';
 import { RootState, AppDispatch } from '../../../store';
 import { fetchExpenses } from '../../../store/slices/expensesSlice';
-import { FilterHeader } from './components/FilterHeader';
+import FilterHeader from './components/FilterHeader';
 import ExpensesList from './components/ExpensesList';
-import { FilterModal } from './components/FilterModal';
+import FilterModal from './components/FilterModal';
 
 type DateFilterType = 'all' | 'today' | 'week' | 'month' | 'custom';
 type SortByType = 'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc';

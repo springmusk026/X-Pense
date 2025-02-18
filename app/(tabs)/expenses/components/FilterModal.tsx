@@ -42,7 +42,7 @@ interface FilterModalProps {
   categories: Category[];
 }
 
-export function FilterModal({
+export default function FilterModal({
   visible,
   onClose,
   filters,

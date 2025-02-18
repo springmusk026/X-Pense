@@ -3,17 +3,20 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  RefreshControl,
   TouchableOpacity,
   Platform,
   ViewStyle,
   Animated,
   Dimensions,
+  TextInput,
+  FlatList,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { Category, Expense } from '@/database/types';
+import DateRangeFilter from '@/components/DateRangeFilter';
 
 // Platform-specific shadow styles with enhanced depth
 const platformStyles = {
@@ -54,9 +57,7 @@ const ExpenseItem = React.memo(({
   category?: Category;
   isLastItem: boolean;
 }) => {
-  // Calculate if the expense is from today
   const isToday = format(new Date(expense.date), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
-  
   const [scaleAnim] = useState(new Animated.Value(1));
 
   const onPressIn = () => {
@@ -88,41 +89,41 @@ const ExpenseItem = React.memo(({
           styles.expenseItemInner,
           { transform: [{ scale: scaleAnim }] }
         ]}>
-        <View style={[styles.expenseIcon, {
-          backgroundColor: category?.color + '10',
-          borderWidth: 1,
-          borderColor: category?.color + '20'
-        }]}>
-          <MaterialCommunityIcons
-            name={(category?.icon || 'cash') as any}
-            size={24}
-            color={category?.color}
-          />
-        </View>
-        <View style={styles.expenseDetails}>
-          <View style={styles.expenseHeaderRow}>
-            <Text style={styles.expenseCategory}>{expense.category}</Text>
-            {isToday && (
-              <View style={styles.todayBadge}>
-                <Text style={styles.todayText}>Today</Text>
-              </View>
-            )}
+          <View style={[styles.expenseIcon, {
+            backgroundColor: category?.color + '10',
+            borderWidth: 1,
+            borderColor: category?.color + '20'
+          }]}>
+            <MaterialCommunityIcons
+              name={(category?.icon || 'cash') as any}
+              size={24}
+              color={category?.color}
+            />
           </View>
-          <Text style={styles.expenseDescription} numberOfLines={2}>
-            {expense.description}
-          </Text>
-          <Text style={styles.expenseDate}>
-            {format(new Date(expense.date), 'EEE, MMM d, yyyy')}
-          </Text>
-        </View>
-        <View style={styles.amountContainer}>
-          <Text style={[
-            styles.expenseAmount,
-            { color: expense.amount > 1000 ? '#FF6B6B' : '#2A2D43' }
-          ]}>
-            ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-          </Text>
-        </View>
+          <View style={styles.expenseDetails}>
+            <View style={styles.expenseHeaderRow}>
+              <Text style={styles.expenseCategory}>{expense.category}</Text>
+              {isToday && (
+                <View style={styles.todayBadge}>
+                  <Text style={styles.todayText}>Today</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.expenseDescription} numberOfLines={2}>
+              {expense.description}
+            </Text>
+            <Text style={styles.expenseDate}>
+              {format(new Date(expense.date), 'EEE, MMM d, yyyy')}
+            </Text>
+          </View>
+          <View style={styles.amountContainer}>
+            <Text style={[
+              styles.expenseAmount,
+              { color: expense.amount > 1000 ? '#FF6B6B' : '#2A2D43' }
+            ]}>
+              ${expense.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </Text>
+          </View>
         </Animated.View>
       </TouchableOpacity>
     </Link>
@@ -138,17 +139,35 @@ export default function ExpensesList({
 }: ExpensesListProps) {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [displayedExpenses, setDisplayedExpenses] = useState<Expense[]>([]);
   
   const loadMoreExpenses = useCallback(() => {
     setLoading(true);
     setTimeout(() => {
+      const filteredExpenses = expenses.filter(expense => 
+        (expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        expense.amount.toString().includes(searchQuery)) &&
+        (!startDate || new Date(expense.date) >= startDate) &&
+        (!endDate || new Date(expense.date) <= endDate)
+      );
       const startIndex = 0;
       const endIndex = page * itemsPerPage;
-      setDisplayedExpenses(expenses.slice(startIndex, endIndex));
+      setDisplayedExpenses(filteredExpenses.slice(startIndex, endIndex));
       setLoading(false);
-    }, 500); // Simulate network delay
-  }, [expenses, page, itemsPerPage]);
+    }, 500);
+  }, [expenses, page, itemsPerPage, searchQuery]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPage(1);
+    loadMoreExpenses();
+    setRefreshing(false);
+  }, [loadMoreExpenses]);
 
   useEffect(() => {
     setPage(1);
@@ -164,7 +183,7 @@ export default function ExpensesList({
   const handleLoadMore = () => {
     setPage(prev => prev + 1);
   };
-  // Memoize category lookup for better performance
+
   const categoryMap = useMemo(() => {
     return categories.reduce((acc, category) => {
       acc[category.name] = category;
@@ -197,53 +216,122 @@ export default function ExpensesList({
     );
   }
 
+  const ListEmptyComponent = () => (
+    <View style={styles.emptyState}>
+      <MaterialCommunityIcons
+        name="wallet-outline"
+        size={80}
+        color="#9CA3AF"
+      />
+      <Text style={styles.emptyStateTitle}>No expenses found</Text>
+      <Text style={styles.emptyStateSubtitle}>
+        Try adjusting your search or filters
+      </Text>
+    </View>
+  );
+
+  const ListFooterComponent = () => (
+    <>
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <MaterialCommunityIcons 
+            name="loading" 
+            size={24} 
+            color="#4A90E2"
+            style={styles.loadingIcon} 
+          />
+          <Text style={styles.loadingText}>Loading expenses...</Text>
+        </View>
+      )}
+      {hasMoreExpenses && !loading && (
+        <TouchableOpacity
+          style={styles.loadMoreButton}
+          onPress={handleLoadMore}
+        >
+          <Text style={styles.loadMoreText}>Load More</Text>
+          <MaterialCommunityIcons
+            name="chevron-down"
+            size={20}
+            color="#4A90E2"
+          />
+        </TouchableOpacity>
+      )}
+    </>
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.expensesList}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search expenses..."
+          value={searchQuery}
+          onChangeText={(text) => {
+            setSearchQuery(text);
+            setPage(1);
+          }}
+          placeholderTextColor="#9CA3AF"
+        />
+      </View>
+      <DateRangeFilter
+        startDate={startDate}
+        endDate={endDate}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onClear={() => {
+          setStartDate(null);
+          setEndDate(null);
+          setPage(1);
+        }}
+      />
+      <FlatList
+        data={displayedExpenses}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.expensesListContent}
         showsVerticalScrollIndicator={false}
-      >
-        {displayedExpenses.map((expense, index) => (
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        renderItem={({ item, index }) => (
           <ExpenseItem
-            key={expense.id}
-            expense={expense}
-            category={categoryMap[expense.category]}
+            expense={item}
+            category={categoryMap[item.category]}
             isLastItem={index === displayedExpenses.length - 1 && !hasMoreExpenses}
           />
-        ))}
-        
-        {loading && (
-          <View style={styles.loadingContainer}>
-            <MaterialCommunityIcons 
-              name="loading" 
-              size={24} 
-              color="#4A90E2"
-              style={styles.loadingIcon} 
-            />
-            <Text style={styles.loadingText}>Loading expenses...</Text>
-          </View>
         )}
-
-        {hasMoreExpenses && !loading && (
-          <TouchableOpacity
-            style={styles.loadMoreButton}
-            onPress={handleLoadMore}
-          >
-            <Text style={styles.loadMoreText}>Load More</Text>
-            <MaterialCommunityIcons
-              name="chevron-down"
-              size={20}
-              color="#4A90E2"
-            />
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+        ListEmptyComponent={ListEmptyComponent}
+        ListFooterComponent={ListFooterComponent}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  searchContainer: {
+    padding: 16,
+    paddingBottom: 8,
+    backgroundColor: '#F8FAFC',
+  },
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    fontSize: 16,
+    color: '#1F2937',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',

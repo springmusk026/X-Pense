@@ -12,19 +12,22 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { VictoryPie } from 'victory-native';
+import { VictoryPie, VictoryLine, VictoryChart, VictoryAxis, VictoryTheme } from 'victory-native';
+import { exportExpensesToCSV } from '../../utils/export';
 import { Link } from 'expo-router';
 import { RootState, AppDispatch } from '../../store';
 import { fetchExpenses } from '../../store/slices/expensesSlice';
 import { fetchCategories, updateCategoryBudget } from '../../store/slices/categoriesSlice';
 import BudgetModal from '../../components/BudgetModal';
 
-export default function HomeScreen() {
+export default function Page() {
   const dispatch = useDispatch<AppDispatch>();
   const expenses = useSelector((state: RootState) => state.expenses.items);
   const categories = useSelector((state: RootState) => state.categories.items);
   const [totalSpent, setTotalSpent] = useState(0);
   const [monthlySpent, setMonthlySpent] = useState(0);
+  const [trendData, setTrendData] = useState<{ x: string; y: number }[]>([]);
+  const [exporting, setExporting] = useState(false);
   const progressAnimation = useState(new Animated.Value(0))[0];
   const monthlyAnimation = useRef(new Animated.Value(0)).current;
   const [categorySpending, setCategorySpending] = useState<{ category: string; amount: number; color: string }[]>([]);
@@ -51,14 +54,35 @@ export default function HomeScreen() {
 
       setCategorySpending(spending);
 
-      // Calculate monthly spending
       const currentMonth = new Date().getMonth();
       const monthlyTotal = expenses
         .filter(exp => new Date(exp.date).getMonth() === currentMonth)
         .reduce((sum, exp) => sum + exp.amount, 0);
       setMonthlySpent(monthlyTotal);
 
-      // Animate values
+      // Calculate spending trends for last 6 months
+      const last6Months = Array.from({ length: 6 }, (_, i) => {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        return {
+          month: format(date, 'MMM'),
+          fullDate: date,
+        };
+      }).reverse();
+
+      const trends = last6Months.map(({ month, fullDate }) => {
+        const monthlySpent = expenses
+          .filter(exp => {
+            const expDate = new Date(exp.date);
+            return expDate.getMonth() === fullDate.getMonth() &&
+              expDate.getFullYear() === fullDate.getFullYear();
+          })
+          .reduce((sum, exp) => sum + exp.amount, 0);
+        return { x: month, y: monthlySpent };
+      });
+
+      setTrendData(trends);
+
       Animated.parallel([
         Animated.timing(progressAnimation, {
           toValue: 1,
@@ -100,7 +124,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.pageContainer}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.welcomeText}>Hello there! 👋</Text>
           <Text style={styles.dateText}>
@@ -109,7 +133,7 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.statsContainer}>
-          <Animated.View 
+          <Animated.View
             style={[
               styles.statsCard,
               {
@@ -131,7 +155,7 @@ export default function HomeScreen() {
             </Text>
           </Animated.View>
 
-          <Animated.View 
+          <Animated.View
             style={[
               styles.statsCard,
               {
@@ -196,20 +220,20 @@ export default function HomeScreen() {
                   </Text>
                 </View>
 
-            <View style={styles.progressBarContainer}>
-              <Animated.View
-                style={[
-                  styles.progressBar,
-                  {
-                    width: progressAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0%', `${progress}%`],
-                    }),
-                    backgroundColor: statusColor,
-                  },
-                ]}
-              />
-            </View>
+                <View style={styles.progressBarContainer}>
+                  <Animated.View
+                    style={[
+                      styles.progressBar,
+                      {
+                        width: progressAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: ['0%', `${progress}%`],
+                        }),
+                        backgroundColor: statusColor,
+                      },
+                    ]}
+                  />
+                </View>
 
                 {progress >= 80 && (
                   <View style={styles.warningContainer}>
@@ -236,13 +260,14 @@ export default function HomeScreen() {
               <MaterialCommunityIcons name="chart-pie" size={24} color="#FF7043" />
               <Text style={styles.sectionTitle}>Spending by Category</Text>
             </View>
-            <View style={styles.chart}>
+            <View style={styles.charts}>
+              <Text style={styles.chartTitle}>Monthly Distribution</Text>
               <VictoryPie
                 data={chartData}
                 colorScale={chartData.map(d => d.color)}
                 width={300}
-                height={300}
-                padding={50}
+                height={250}
+                padding={40}
                 labels={({ datum }) => `${datum.x}\n$${datum.y.toFixed(0) || 0}`}
                 style={{
                   labels: {
@@ -251,21 +276,82 @@ export default function HomeScreen() {
                   },
                 }}
               />
+              <View style={styles.trendChart}>
+                <Text style={styles.chartTitle}>Spending Trend</Text>
+                <VictoryChart
+                  theme={VictoryTheme.material}
+                  height={250}
+                  padding={{ top: 20, right: 40, bottom: 40, left: 60 }}
+                >
+                  <VictoryAxis
+                    tickFormat={(t) => t}
+                    style={{
+                      tickLabels: { fontSize: 10, fill: '#6B7280' }
+                    }}
+                  />
+                  <VictoryAxis
+                    dependentAxis
+                    tickFormat={(t) => `$${t}`}
+                    style={{
+                      tickLabels: { fontSize: 10, fill: '#6B7280' }
+                    }}
+                  />
+                  <VictoryLine
+                    style={{
+                      data: { stroke: "#4A90E2" },
+                      parent: { border: "1px solid #ccc" }
+                    }}
+                    data={trendData}
+                    animate={{
+                      duration: 2000,
+                      onLoad: { duration: 1000 }
+                    }}
+                  />
+                </VictoryChart>
+              </View>
             </View>
           </View>
         )}
 
         <View style={styles.recentExpenses}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.sectionTitleContainer}>
-              <MaterialCommunityIcons name="clock-outline" size={24} color="#42A5F5" />
-              <Text style={styles.sectionTitle}>Recent Expenses</Text>
+          <View style={styles.recentExpensesHeader}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleContainer}>
+                <MaterialCommunityIcons name="clock-outline" size={24} color="#42A5F5" />
+                <Text style={styles.sectionTitle}>Recent Expenses</Text>
+              </View>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.exportButton}
+                  onPress={async () => {
+                    setExporting(true);
+                    try {
+                      await exportExpensesToCSV(expenses);
+                    } catch (error) {
+                      console.error('Export failed:', error);
+                    } finally {
+                      setExporting(false);
+                    }
+                  }}
+                  disabled={exporting}
+                >
+                  <MaterialCommunityIcons
+                    name={exporting ? "loading" : "file-export-outline"}
+                    size={20}
+                    color="#4A90E2"
+                    style={exporting && styles.spinningIcon}
+                  />
+                  <Text style={styles.exportText}>
+                    {exporting ? 'Exporting...' : 'Export'}
+                  </Text>
+                </TouchableOpacity>
+                <Link href="/(tabs)/expenses" asChild>
+                  <TouchableOpacity>
+                    <Text style={styles.viewAllText}>View All</Text>
+                  </TouchableOpacity>
+                </Link>
+              </View>
             </View>
-            <Link href="/(tabs)/expenses" asChild>
-              <TouchableOpacity>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            </Link>
           </View>
           {expenses.slice(0, 3).map((expense) => (
             <View key={expense.id} style={styles.expenseItem}>
@@ -292,7 +378,6 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </Link>
         </View>
-
       </ScrollView>
 
       <BudgetModal
@@ -303,6 +388,7 @@ export default function HomeScreen() {
         }}
         category={selectedCategory ? categories.find(c => c.name === selectedCategory) || null : null}
       />
+
       <Link href="/(tabs)/expenses/new" asChild>
         <TouchableOpacity style={styles.fab}>
           <View style={styles.fabInner}>
@@ -310,38 +396,16 @@ export default function HomeScreen() {
           </View>
         </TouchableOpacity>
       </Link>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    padding: 24,
-    paddingTop: 32,
-  },
-  welcomeText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#2A2D43',
-    marginBottom: 4,
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#757575',
-    fontWeight: '500',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  statsCard: {
-    flex: 1,
+  charts: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 20,
-    marginHorizontal: 4,
+    padding: 12,
+    margin: 8,
+    borderRadius: 16,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -351,6 +415,87 @@ const styles = StyleSheet.create({
       },
       android: {
         elevation: 4,
+      },
+      web: {
+        boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+      },
+    }),
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2A2D43',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  trendChart: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  recentExpensesHeader: {
+    marginTop: 8,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  exportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  exportText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
+  spinningIcon: {
+    transform: [{ rotate: '360deg' }],
+  },
+  header: {
+    padding: 16,
+    paddingTop: 24,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#2A2D43',
+    marginBottom: 4,
+  },
+  dateText: {
+    fontSize: 15,
+    color: '#757575',
+    fontWeight: '500',
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    marginBottom: 8,
+  },
+  statsCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 16,
+    marginHorizontal: 4,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 2,
       },
     }),
     borderWidth: 1,
@@ -368,59 +513,15 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   statsAmount: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  viewAllText: {
-    fontSize: 14,
-    color: '#4A90E2',
-    fontWeight: '600',
-  },
-  viewMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-    marginTop: 8,
-  },
-  viewMoreText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#4A90E2',
-    marginRight: 4,
-  },
-  pageContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#2A2D43',
-    letterSpacing: -0.5,
-  },
-  date: {
-    fontSize: 15,
-    color: '#757575',
-    marginTop: 6,
-    letterSpacing: -0.2,
   },
   budgetSection: {
     backgroundColor: '#FFFFFF',
-    margin: 16,
+    margin: 8,
     marginTop: 8,
-    padding: 24,
-    borderRadius: 20,
+    padding: 16,
+    borderRadius: 16,
     ...(Platform.select({
       ios: {
         shadowColor: '#000',
@@ -442,10 +543,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2A2D43',
+    marginLeft: 8,
   },
   budgetItem: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   budgetHeader: {
     flexDirection: 'row',
@@ -459,7 +570,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     marginLeft: 8,
-    fontSize: 16,
+    fontSize: 15,
     color: '#2A2D43',
     fontWeight: '500',
   },
@@ -468,14 +579,14 @@ const styles = StyleSheet.create({
     color: '#757575',
   },
   progressBarContainer: {
-    height: 10,
+    height: 8,
     backgroundColor: '#F0F0F0',
-    borderRadius: 6,
+    borderRadius: 4,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 4,
   },
   warningContainer: {
     flexDirection: 'row',
@@ -488,9 +599,9 @@ const styles = StyleSheet.create({
   },
   chartContainer: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
-    margin: 16,
-    borderRadius: 20,
+    padding: 16,
+    margin: 8,
+    borderRadius: 16,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -502,18 +613,12 @@ const styles = StyleSheet.create({
   chart: {
     alignItems: 'center',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#2A2D43',
-    marginLeft: 12,
-  },
   recentExpenses: {
     backgroundColor: '#FFFFFF',
-    padding: 24,
-    margin: 16,
-    marginBottom: 100,
-    borderRadius: 20,
+    padding: 16,
+    margin: 8,
+    marginBottom: 80,
+    borderRadius: 16,
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -525,14 +630,14 @@ const styles = StyleSheet.create({
   expenseItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
   },
   expenseIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -544,44 +649,72 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   expenseCategory: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#2A2D43',
   },
   expenseDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#757575',
   },
   expenseAmount: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#2A2D43',
   },
+  viewAllText: {
+    fontSize: 14,
+    color: '#4A90E2',
+    fontWeight: '600',
+  },
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    marginTop: 8,
+  },
+  viewMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#4A90E2',
+    marginRight: 4,
+  },
+  pageContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   fab: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 40 : 24, // Account for iOS home indicator
-    right: 24,
-    zIndex: 999, // Ensure it stays on top
+    bottom: Platform.OS === 'ios' ? 32 : 24,
+    right: 16,
+    zIndex: 999,
   },
   fabInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#7C4DFF',
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
       ios: {
         shadowColor: '#4A90E2',
-        shadowOffset: { width: 0, height: 6 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowRadius: 6,
       },
       android: {
-        elevation: 8,
+        elevation: 6,
       },
       web: {
-        boxShadow: '0 6px 12px rgba(74,144,226,0.3)',
+        boxShadow: '0 4px 8px rgba(74,144,226,0.3)',
       },
     }),
     borderWidth: 1,

@@ -1,4 +1,4 @@
-package com.expensetracker.app
+package com.expense.tracker.app.np
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
