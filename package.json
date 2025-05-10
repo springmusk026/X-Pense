@@ -1,7 +1,7 @@
 {
   "name": "expense-tracker",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "scripts": {
     "dev": "EXPO_NO_TELEMETRY=1 expo start",
@@ -10,13 +10,14 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo/metro-config": "^0.19.11",
     "@expo/vector-icons": "^14.0.2",
     "@react-native-community/datetimepicker": "8.2.0",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@reduxjs/toolkit": "^2.0.1",
     "date-fns": "^3.0.6",
-    "expo": "~52.0.35",
+    "expo": "~52.0.36",
     "expo-blur": "^14.0.3",
     "expo-constants": "^17.0.5",
     "expo-document-picker": "~13.0.3",
@@ -25,12 +26,12 @@
     "expo-haptics": "^14.0.1",
     "expo-image-manipulator": "~13.0.6",
     "expo-image-picker": "~16.0.6",
-    "expo-linear-gradient": "^14.0.2",
+    "expo-linear-gradient": "~14.0.2",
     "expo-linking": "^7.0.5",
     "expo-local-authentication": "~15.0.2",
     "expo-media-library": "~17.0.6",
     "expo-notifications": "~0.29.13",
-    "expo-router": "4.0.17",
+    "expo-router": "~4.0.17",
     "expo-secure-store": "^14.0.1",
     "expo-sharing": "~13.0.1",
     "expo-splash-screen": "^0.29.21",
@@ -39,6 +40,8 @@
     "expo-system-ui": "^4.0.7",
     "formik": "^2.4.5",
     "idb": "^8.0.0",
+    "metro": "^0.81.3",
+    "metro-resolver": "^0.81.3",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
@@ -54,6 +57,15 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~18.3.12",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "eslint": "^8.57.0",
+    "eslint-config-expo": "~8.0.1"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    }
   }
 }

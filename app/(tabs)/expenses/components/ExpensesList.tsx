@@ -147,20 +147,18 @@ export default function ExpensesList({
   
   const loadMoreExpenses = useCallback(() => {
     setLoading(true);
-    setTimeout(() => {
-      const filteredExpenses = expenses.filter(expense => 
-        (expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        expense.amount.toString().includes(searchQuery)) &&
-        (!startDate || new Date(expense.date) >= startDate) &&
-        (!endDate || new Date(expense.date) <= endDate)
-      );
-      const startIndex = 0;
-      const endIndex = page * itemsPerPage;
-      setDisplayedExpenses(filteredExpenses.slice(startIndex, endIndex));
-      setLoading(false);
-    }, 500);
-  }, [expenses, page, itemsPerPage, searchQuery]);
+    const filteredExpenses = expenses.filter(expense => 
+      (expense.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      expense.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      expense.amount.toString().includes(searchQuery)) &&
+      (!startDate || new Date(expense.date) >= startDate) &&
+      (!endDate || new Date(expense.date) <= endDate)
+    );
+    const startIndex = 0;
+    const endIndex = page * itemsPerPage;
+    setDisplayedExpenses(filteredExpenses.slice(startIndex, endIndex));
+    setLoading(false);
+  }, [expenses, page, itemsPerPage, searchQuery, startDate, endDate]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -169,10 +167,20 @@ export default function ExpensesList({
     setRefreshing(false);
   }, [loadMoreExpenses]);
 
+  // Effect to trigger search when query changes
+  useEffect(() => {
+    const debounceTimeout = setTimeout(() => {
+      setPage(1);
+      loadMoreExpenses();
+    }, 300);
+
+    return () => clearTimeout(debounceTimeout);
+  }, [searchQuery, loadMoreExpenses]);
+
   useEffect(() => {
     setPage(1);
     loadMoreExpenses();
-  }, [expenses]);
+  }, [expenses, startDate, endDate]);
 
   useEffect(() => {
     loadMoreExpenses();
@@ -191,32 +199,7 @@ export default function ExpensesList({
     }, {} as Record<string, Category>);
   }, [categories]);
 
-  if (displayedExpenses.length === 0 && !loading) {
-    return (
-      <View style={styles.emptyState}>
-        <MaterialCommunityIcons
-          name="wallet-outline"
-          size={80}
-          color="#9CA3AF"
-        />
-        <Text style={styles.emptyStateTitle}>No expenses found</Text>
-        <Text style={styles.emptyStateSubtitle}>
-          Try adjusting your filters or add a new expense
-        </Text>
-        {showClearFilters && onClearFilters && (
-          <TouchableOpacity
-            style={styles.clearFiltersButton}
-            onPress={onClearFilters}
-          >
-            <MaterialCommunityIcons name="filter-off" size={20} color="#FFFFFF" />
-            <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    );
-  }
-
-  const ListEmptyComponent = () => (
+  const EmptyStateContent = () => (
     <View style={styles.emptyState}>
       <MaterialCommunityIcons
         name="wallet-outline"
@@ -227,6 +210,15 @@ export default function ExpensesList({
       <Text style={styles.emptyStateSubtitle}>
         Try adjusting your search or filters
       </Text>
+      {showClearFilters && onClearFilters && (
+        <TouchableOpacity
+          style={styles.clearFiltersButton}
+          onPress={onClearFilters}
+        >
+          <MaterialCommunityIcons name="filter-off" size={20} color="#FFFFFF" />
+          <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -262,16 +254,42 @@ export default function ExpensesList({
   return (
     <View style={styles.container}>
       <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search expenses..."
-          value={searchQuery}
-          onChangeText={(text) => {
-            setSearchQuery(text);
-            setPage(1);
-          }}
-          placeholderTextColor="#9CA3AF"
-        />
+        <View style={styles.searchInputContainer}>
+          <TouchableOpacity 
+            onPress={loadMoreExpenses}
+            style={styles.searchIcon}
+          >
+            <MaterialCommunityIcons
+              name="magnify"
+              size={20}
+              color="#757575"
+            />
+          </TouchableOpacity>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search expenses..."
+            value={searchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setPage(1);
+            }}
+            placeholderTextColor="#9CA3AF"
+          />
+          {searchQuery ? (
+            <TouchableOpacity
+              onPress={() => {
+                setSearchQuery('');
+                setPage(1);
+              }}
+            >
+              <MaterialCommunityIcons
+                name="close"
+                size={20}
+                color="#757575"
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
       <DateRangeFilter
         startDate={startDate}
@@ -287,7 +305,10 @@ export default function ExpensesList({
       <FlatList
         data={displayedExpenses}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.expensesListContent}
+        contentContainerStyle={[
+          styles.expensesListContent,
+          displayedExpenses.length === 0 && styles.emptyListContent
+        ]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -299,7 +320,7 @@ export default function ExpensesList({
             isLastItem={index === displayedExpenses.length - 1 && !hasMoreExpenses}
           />
         )}
-        ListEmptyComponent={ListEmptyComponent}
+        ListEmptyComponent={EmptyStateContent}
         ListFooterComponent={ListFooterComponent}
       />
     </View>
@@ -307,19 +328,23 @@ export default function ExpensesList({
 }
 
 const styles = StyleSheet.create({
+  searchIcon: {
+    padding: 4,
+  },
   searchContainer: {
     padding: 16,
     paddingBottom: 8,
     backgroundColor: '#F8FAFC',
   },
-  searchInput: {
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    padding: 12,
     borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
     borderWidth: 1,
     borderColor: '#F0F0F0',
-    fontSize: 16,
-    color: '#1F2937',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -332,6 +357,12 @@ const styles = StyleSheet.create({
       },
     }),
   },
+  searchInput: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#2A2D43',
+  },
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -343,6 +374,9 @@ const styles = StyleSheet.create({
   expensesListContent: {
     paddingHorizontal: 16,
     paddingVertical: 16,
+  },
+  emptyListContent: {
+    flex: 1,
   },
   expenseItemBase: {
     borderRadius: 20,

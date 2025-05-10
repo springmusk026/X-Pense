@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   Platform,
   Pressable,
-  Animated,
+  Animated,Dimensions
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -20,6 +20,114 @@ import { fetchExpenses } from '../../store/slices/expensesSlice';
 import { fetchCategories, updateCategoryBudget } from '../../store/slices/categoriesSlice';
 import BudgetModal from '../../components/BudgetModal';
 
+interface ICategory {
+  category: string; 
+  amount: number; 
+  color: string;
+}
+const { width } = Dimensions.get('window');
+
+const SpendingDashboard = ({ categorySpending }: { categorySpending: ICategory[] }) => {
+  if (!categorySpending.length) return null;
+
+  const chartData = categorySpending.map(category => ({
+    x: category.category,
+    y: category.amount,
+    color: category.color
+  }));
+
+  const trendData = categorySpending.map((category, index) => ({
+    x: index + 1,
+    y: category.amount
+  }));
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <View style={styles.card}>
+        <View style={styles.sectionTitleContainer}>
+          <MaterialCommunityIcons name="chart-pie" size={24} color="#FF7043" />
+          <Text style={styles.sectionTitle}>Spending by Category</Text>
+        </View>
+        
+        <View style={styles.pieChartContainer}>
+          <Text style={styles.chartTitle}>Monthly Distribution</Text>
+          <VictoryPie
+            data={chartData}
+            colorScale={chartData.map(d => d.color)}
+            width={width * 0.85}
+            height={width * 0.85}
+            padding={50}
+            innerRadius={width * 0.15}
+            labels={({ datum }) => `${datum.x}\n$${datum.y.toFixed(0)}`}
+            labelRadius={({ innerRadius }) => innerRadius + width * 0.15}
+            style={{
+              labels: {
+                fill: '#2A2D43',
+                fontSize: 14,
+                fontWeight: 'bold',
+                angle: -50,
+              },
+            }}
+            animate={{
+              duration: 1000,
+              easing: "bounce"
+            }}
+          />
+        </View>
+
+        <View style={styles.trendChartContainer}>
+          <Text style={styles.chartTitle}>Spending Trend</Text>
+          <VictoryChart
+            theme={VictoryTheme.material}
+            height={250}
+            width={width * 0.85}
+            padding={{ top: 30, right: 40, bottom: 50, left: 60 }}
+            domainPadding={{ x: 20, y: 20 }}
+          >
+            <VictoryAxis
+              tickFormat={(t) => `M${t}`}
+              style={{
+                tickLabels: { 
+                  fontSize: 10, 
+                  fill: '#6B7280',
+                  angle: -45,
+                  textAnchor: 'end'
+                },
+                grid: { stroke: '#E5E7EB' }
+              }}
+            />
+            <VictoryAxis
+              dependentAxis
+              tickFormat={(t) => `$${Math.round(t/1000)}k`}
+              style={{
+                tickLabels: { 
+                  fontSize: 10, 
+                  fill: '#6B7280',
+                  padding: 5
+                },
+                grid: { stroke: '#E5E7EB' }
+              }}
+            />
+            <VictoryLine
+              style={{
+                data: { 
+                  stroke: "#4A90E2",
+                  strokeWidth: 3
+                },
+              }}
+              data={trendData}
+              animate={{
+                duration: 1500,
+                onLoad: { duration: 1000 }
+              }}
+            />
+          </VictoryChart>
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
+
 export default function Page() {
   const dispatch = useDispatch<AppDispatch>();
   const expenses = useSelector((state: RootState) => state.expenses.items);
@@ -30,7 +138,7 @@ export default function Page() {
   const [exporting, setExporting] = useState(false);
   const progressAnimation = useState(new Animated.Value(0))[0];
   const monthlyAnimation = useRef(new Animated.Value(0)).current;
-  const [categorySpending, setCategorySpending] = useState<{ category: string; amount: number; color: string }[]>([]);
+  const [categorySpending, setCategorySpending] = useState<ICategory[]>([]);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
@@ -117,8 +225,12 @@ export default function Page() {
   };
 
   const getBudgetStatus = (progress: number) => {
-    if (progress >= 100) return '#FF6B6B';
+    if (progress >= 100) return '#FF4444';
+    if (progress >= 90) return '#FF6B6B';
     if (progress >= 80) return '#FFA726';
+    if (progress >= 70) return '#FFD54F';
+    if (progress >= 50) return '#81C784';
+    if (progress >= 25) return '#66BB6A';
     return '#4CAF50';
   };
 
@@ -126,7 +238,15 @@ export default function Page() {
     <View style={styles.pageContainer}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.welcomeText}>Hello there! 👋</Text>
+          <Text style={styles.welcomeText}>
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour >= 5 && hour < 12) return 'Good Morning! 🌅';
+              if (hour >= 12 && hour < 17) return 'Good Afternoon! ☀️';
+              if (hour >= 17 && hour < 21) return 'Good Evening! 🌆';
+              return 'Good Night! 🌙';
+            })()}
+          </Text>
           <Text style={styles.dateText}>
             {format(new Date(), 'MMMM yyyy')}
           </Text>
@@ -255,62 +375,7 @@ export default function Page() {
         </View>
 
         {categorySpending.length > 0 && (
-          <View style={styles.chartContainer}>
-            <View style={styles.sectionTitleContainer}>
-              <MaterialCommunityIcons name="chart-pie" size={24} color="#FF7043" />
-              <Text style={styles.sectionTitle}>Spending by Category</Text>
-            </View>
-            <View style={styles.charts}>
-              <Text style={styles.chartTitle}>Monthly Distribution</Text>
-              <VictoryPie
-                data={chartData}
-                colorScale={chartData.map(d => d.color)}
-                width={300}
-                height={250}
-                padding={40}
-                labels={({ datum }) => `${datum.x}\n$${datum.y.toFixed(0) || 0}`}
-                style={{
-                  labels: {
-                    fill: '#2A2D43',
-                    fontSize: 12,
-                  },
-                }}
-              />
-              <View style={styles.trendChart}>
-                <Text style={styles.chartTitle}>Spending Trend</Text>
-                <VictoryChart
-                  theme={VictoryTheme.material}
-                  height={250}
-                  padding={{ top: 20, right: 40, bottom: 40, left: 60 }}
-                >
-                  <VictoryAxis
-                    tickFormat={(t) => t}
-                    style={{
-                      tickLabels: { fontSize: 10, fill: '#6B7280' }
-                    }}
-                  />
-                  <VictoryAxis
-                    dependentAxis
-                    tickFormat={(t) => `$${t}`}
-                    style={{
-                      tickLabels: { fontSize: 10, fill: '#6B7280' }
-                    }}
-                  />
-                  <VictoryLine
-                    style={{
-                      data: { stroke: "#4A90E2" },
-                      parent: { border: "1px solid #ccc" }
-                    }}
-                    data={trendData}
-                    animate={{
-                      duration: 2000,
-                      onLoad: { duration: 1000 }
-                    }}
-                  />
-                </VictoryChart>
-              </View>
-            </View>
-          </View>
+          <SpendingDashboard categorySpending={categorySpending}/>
         )}
 
         <View style={styles.recentExpenses}>
@@ -403,8 +468,8 @@ export default function Page() {
 const styles = StyleSheet.create({
   charts: {
     backgroundColor: '#FFFFFF',
-    padding: 12,
-    margin: 8,
+    padding: 0,
+    margin: 0,
     borderRadius: 16,
     ...Platform.select({
       ios: {
@@ -414,7 +479,7 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
       },
       android: {
-        elevation: 4,
+        elevation: 2,
       },
       web: {
         boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
@@ -422,13 +487,6 @@ const styles = StyleSheet.create({
     }),
     borderWidth: 1,
     borderColor: '#F0F0F0',
-  },
-  chartTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#2A2D43',
-    marginBottom: 12,
-    textAlign: 'center',
   },
   trendChart: {
     marginTop: 16,
@@ -719,5 +777,43 @@ const styles = StyleSheet.create({
     }),
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    margin: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#4B5563',
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  pieChartContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  trendChartContainer: {
+    marginTop: 8,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
   },
 });

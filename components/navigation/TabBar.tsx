@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import { usePathname, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { 
@@ -60,67 +60,59 @@ export function TabBar() {
 
         const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-        const animatedStyles = useAnimatedStyle(() => {
+        const containerStyle = useAnimatedStyle(() => {
           return {
             transform: [
               {
-                scale: withSpring(isActive ? 1.1 : 1, {
-                  mass: 0.5,
-                  damping: 10,
-                  stiffness: 100,
+                translateY: withSpring(isActive ? -8 : 0, {
+                  damping: 15,
+                  stiffness: 120,
                 })
               }
             ],
-            opacity: withSpring(isActive ? 1 : 0.7),
           };
         });
 
-        const dotStyle = useAnimatedStyle(() => {
+        const bgStyle = useAnimatedStyle(() => {
           return {
             opacity: withSpring(isActive ? 1 : 0),
             transform: [
               {
-                scale: withSpring(isActive ? 1 : 0),
-              },
-              {
-                translateY: withSpring(isActive ? 0 : 8),
+                scale: withSpring(isActive ? 1 : 0.8),
               }
             ],
-          };
-        });
-
-        const textStyle = useAnimatedStyle(() => {
-          return {
-            transform: [
-              {
-                translateY: withSpring(isActive ? -4 : 0),
-              }
-            ],
-            opacity: withSpring(isActive ? 1 : 0.7),
           };
         });
 
         return (
           <AnimatedPressable
             key={tab.name}
-            style={[styles.tab, animatedStyles]}
+            style={[styles.tab, containerStyle]}
             onPress={() => router.push(tab.route)}
           >
-            <MaterialCommunityIcons
-              name={tab.icon}
-              size={24}
-              color={isActive ? '#4A90E2' : '#757575'}
-            />
-            <Animated.Text
-              style={[
-                styles.tabText,
-                textStyle,
-                { color: isActive ? '#4A90E2' : '#757575' }
-              ]}
-            >
-              {tab.label}
-            </Animated.Text>
-            <Animated.View style={[styles.dot, dotStyle]} />
+            <Animated.View style={[styles.activeBackground, bgStyle]} />
+            <View style={styles.content}>
+              <MaterialCommunityIcons
+                name={tab.icon}
+                size={24}
+                color={isActive ? '#2563eb' : '#94A3B8'}
+                style={styles.icon}
+              />
+              <Animated.Text
+                style={[
+                  styles.tabText,
+                  { 
+                    color: isActive ? '#2563eb' : '#94A3B8',
+                    fontWeight: isActive ? '700' : '500',
+                  }
+                ]}
+              >
+                {tab.label}
+              </Animated.Text>
+            </View>
+            {isActive && (
+              <View style={styles.activeDot} />
+            )}
           </AnimatedPressable>
         );
       })}
@@ -133,9 +125,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: '#E2E8F0',
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    paddingTop: 12,
+    paddingTop: 16,
+    paddingHorizontal: 8,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -146,9 +139,6 @@ const styles = StyleSheet.create({
       android: {
         elevation: 8,
       },
-      web: {
-        boxShadow: '0px -2px 4px rgba(0, 0, 0, 0.1)',
-      },
     }),
   },
   tab: {
@@ -156,18 +146,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    height: 60,
+    marginHorizontal: 4,
+  },
+  content: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  activeBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  icon: {
+    marginBottom: 4,
   },
   tabText: {
     fontSize: 12,
-    marginTop: 4,
-    fontWeight: '500',
+    letterSpacing: 0.3,
   },
-  dot: {
+  activeDot: {
     position: 'absolute',
-    bottom: -8,
+    top: -2,
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#4A90E2',
+    backgroundColor: '#2563eb',
   },
 });

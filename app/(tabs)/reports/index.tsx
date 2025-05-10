@@ -70,7 +70,10 @@ export default function Page() {
 
     return days.map(day => {
       const dayTotal = expenses
-        .filter(expense => isSameMonth(new Date(expense.date), day))
+        .filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return format(expenseDate, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd');
+        })
         .reduce((sum, expense) => sum + expense.amount, 0);
 
       return {
@@ -180,8 +183,8 @@ export default function Page() {
               width={CHART_WIDTH}
               height={300}
               colorScale={getCategoryData().map(d => d.color)}
-              innerRadius={70}
-              labelRadius={({ innerRadius }) => (innerRadius + 80) as number}
+              innerRadius={50}
+              labelRadius={({ innerRadius }) => ((typeof innerRadius === 'number' ? innerRadius : 70) + 80)}
               style={{
                 labels: {
                   fill: '#2A2D43',
@@ -196,11 +199,18 @@ export default function Page() {
               height={300}
               theme={VictoryTheme.material}
               domainPadding={{ x: 20 }}
+              padding={{ top: 20, bottom: 50, left: 60, right: 20 }}
             >
               <VictoryAxis
                 tickFormat={(t) => t}
                 style={{
-                  tickLabels: { fontSize: 10, padding: 5 },
+                  tickLabels: {
+                    fontSize: 10,
+                    padding: 5,
+                    angle: -50,
+                    textAnchor: 'end',
+                    verticalAnchor: 'middle'
+                  }
                 }}
               />
               <VictoryAxis
@@ -212,6 +222,7 @@ export default function Page() {
               />
               <VictoryBar
                 data={getSpendingData()}
+                alignment="start"
                 style={{
                   data: {
                     fill: '#4A90E2',

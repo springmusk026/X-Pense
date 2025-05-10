@@ -83,8 +83,84 @@ export default function CardsScreen() {
   };
 
   const renderCardPattern = (pattern: string) => {
-    // You would implement different SVG patterns here
-    return null;
+    switch (pattern) {
+      case 'linear':
+        return (
+          <View style={{ position: 'absolute', opacity: 0.1 }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: CARD_WIDTH,
+                  height: 1,
+                  backgroundColor: '#FFFFFF',
+                  marginVertical: 30,
+                }}
+              />
+            ))}
+          </View>
+        );
+      case 'radial':
+        return (
+          <View style={{ position: 'absolute', opacity: 0.1 }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: CARD_WIDTH * (1 - i * 0.2),
+                  height: CARD_WIDTH * (1 - i * 0.2),
+                  borderRadius: CARD_WIDTH,
+                  borderWidth: 1,
+                  borderColor: '#FFFFFF',
+                  position: 'absolute',
+                  top: -CARD_WIDTH * 0.3,
+                  right: -CARD_WIDTH * 0.3,
+                }}
+              />
+            ))}
+          </View>
+        );
+      case 'diagonal':
+        return (
+          <View style={{ position: 'absolute', opacity: 0.1 }}>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: CARD_WIDTH * 2,
+                  height: 1,
+                  backgroundColor: '#FFFFFF',
+                  position: 'absolute',
+                  top: i * 40,
+                  left: -CARD_WIDTH / 2,
+                  transform: [{ rotate: '45deg' }],
+                }}
+              />
+            ))}
+          </View>
+        );
+      case 'wave':
+        return (
+          <View style={{ position: 'absolute', opacity: 0.1, flexDirection: 'row' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  width: CARD_WIDTH / 3,
+                  height: CARD_HEIGHT,
+                  borderRadius: 100,
+                  borderWidth: 1,
+                  borderColor: '#FFFFFF',
+                  marginHorizontal: -20,
+                }}
+              />
+            ))}
+          </View>
+        );
+      case 'solid':
+      default:
+        return null;
+    }
   };
 
   const renderCards = () => {
@@ -135,7 +211,10 @@ export default function CardsScreen() {
                 { transform: [{ scale }], opacity }
               ]}
             >
-              <Pressable onPress={() => {/* Navigate to card details */}}>
+              <Pressable 
+                key={`card-pressable-${card.id}`}
+                onPress={() => {/* Navigate to card details */}}
+              >
                 <LinearGradient
                   colors={ISSUER_CONFIGS[card.issuer as keyof typeof ISSUER_CONFIGS]?.colors || ISSUER_CONFIGS.Other.colors}
                   style={styles.card}
@@ -159,11 +238,11 @@ export default function CardsScreen() {
                   </View>
 
                   <View style={styles.cardFooter}>
-                    <View>
+                    <View key={`expiry-${card.id}`}>
                       <Text style={styles.cardLabel}>Expires</Text>
                       <Text style={styles.cardValue}>{format(new Date(card.expiry), 'MM/yy')}</Text>
                     </View>
-                    <View>
+                    <View key={`type-${card.id}`}>
                       <Text style={styles.cardLabel}>Card Type</Text>
                       <Text style={styles.cardValue}>{card.type}</Text>
                     </View>
@@ -172,13 +251,13 @@ export default function CardsScreen() {
 
                 <View style={styles.cardStats}>
                   <View style={styles.statRow}>
-                    <View style={styles.statItem}>
+                    <View style={styles.statItem} key={`monthly-${card.id}`}>
                       <Text style={styles.statLabel}>This Month</Text>
                       <Text style={styles.statValue}>
                         ${getCardSpending(card.id).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </Text>
                     </View>
-                    <View style={styles.statItem}>
+                    <View style={styles.statItem} key={`total-${card.id}`}>
                       <Text style={styles.statLabel}>Total Spent</Text>
                       <Text style={styles.statValue}>
                         ${getCardTotalSpending(card.id).toLocaleString('en-US', { minimumFractionDigits: 2 })}

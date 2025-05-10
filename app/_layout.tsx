@@ -6,6 +6,7 @@ import { store } from '../store';
 import { Stack } from 'expo-router';
 import { initializeDatabase } from '../database';
 import { generateRecurringExpenses } from '../store/slices/recurringExpensesSlice';
+import { fetchCards } from '../store/slices/cardsSlice';
 import {
   setupNotifications,
   scheduleMonthlyBudgetReminder,
@@ -27,6 +28,7 @@ export default function RootLayout() {
       try {
         await initializeDatabase();
         await store.dispatch(generateRecurringExpenses({}));
+        await store.dispatch(fetchCards());
         const notificationsEnabled = await setupNotifications();
         if (notificationsEnabled) {
           await scheduleMonthlyBudgetReminder();

@@ -10,15 +10,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 
 interface FilterHeaderProps {
-  search: string;
-  onSearchChange: (text: string) => void;
   onFilterPress: () => void;
   activeFilterCount: number;
 }
 
 export default function FilterHeader({
-  search,
-  onSearchChange,
   onFilterPress,
   activeFilterCount,
 }: FilterHeaderProps) {
@@ -55,32 +51,6 @@ export default function FilterHeader({
         </TouchableOpacity>
       </View>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <MaterialCommunityIcons
-            name="magnify"
-            size={20}
-            color="#757575"
-          />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search expenses..."
-            value={search}
-            onChangeText={onSearchChange}
-          />
-          {search ? (
-            <TouchableOpacity
-              onPress={() => onSearchChange('')}
-            >
-              <MaterialCommunityIcons
-                name="close"
-                size={20}
-                color="#757575"
-              />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-      </View>
     </>
   );
 }
@@ -128,23 +98,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-  },
-  searchContainer: {
-    padding: 16,
-    paddingTop: 0,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    height: 48,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 16,
-    color: '#2A2D43',
   },
 });

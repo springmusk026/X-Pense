@@ -4,7 +4,7 @@ import { TabBar } from '../../components/navigation/TabBar';
 
 export default function TabLayout() {
   return (
-    <View style={{ flex: 1 , top: 10, left: 0, right: 0, bottom: 0, position: 'absolute' }}>
+    <View style={{ flex: 1 }}>
       <Slot />
       <TabBar />
     </View>

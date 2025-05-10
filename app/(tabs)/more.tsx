@@ -83,6 +83,14 @@ const skills = [
   { name: 'Node.js', color: '#339933' },
   { name: 'UI/UX Design', color: '#FF7262' },
   { name: 'Mobile Dev', color: '#4CAF50' },
+  { name: 'Web Dev', color: '#2196F3' },
+  { name: 'Firebase', color: '#FFCA28' },
+  { name: 'Docker', color: '#2496ED' },
+  { name: 'CI/CD', color: '#575757' },
+  { name: 'Kotlin', color: '#0095D5' },
+  { name: 'Jetpack Compose', color: '#6200EE' },
+  { name: 'C++', color: '#239120' },
+  { name: 'Java', color : "#FFCA28"},
 ];
 
 export default function MoreScreen() {
